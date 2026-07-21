@@ -5,6 +5,9 @@ import react from "@vitejs/plugin-react";
 // frontend can use same-origin relative URLs.
 export default defineConfig({
   plugins: [react()],
+  define: {
+    global: "window",
+  },
   server: {
     port: 5173,
     proxy: {
