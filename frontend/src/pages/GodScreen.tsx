@@ -47,6 +47,29 @@ export default function GodScreen({ room }: { room: RoomView }) {
         </span>
       </div>
 
+      {room.phase === "NIGHT" && (
+        <div className="mt-3 p-4 bg-white/5 rounded-2xl border border-white/5 flex flex-col gap-2.5 text-[15px]">
+          <div className="flex items-center justify-between">
+            <span className="text-white/60">🔪 Mafia action:</span>
+            <span className={room.players.find(p => p.id === room.mafiaTargetId)?.name ? "font-semibold text-ios-red" : "text-white/30"}>
+              {room.players.find(p => p.id === room.mafiaTargetId)?.name ? `Killed ${room.players.find(p => p.id === room.mafiaTargetId)?.name}` : "Waiting for Mafia..."}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-white/60">🩺 Doctor action:</span>
+            <span className={room.players.find(p => p.id === room.doctorTargetId)?.name ? "font-semibold text-ios-green" : "text-white/30"}>
+              {room.players.find(p => p.id === room.doctorTargetId)?.name ? `Saved ${room.players.find(p => p.id === room.doctorTargetId)?.name}` : "Waiting for Doctor..."}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-white/60">🔍 Detective action:</span>
+            <span className={room.players.find(p => p.id === room.detectiveTargetId)?.name ? "font-semibold text-ios-blue" : "text-white/30"}>
+              {room.players.find(p => p.id === room.detectiveTargetId)?.name ? `Suspected ${room.players.find(p => p.id === room.detectiveTargetId)?.name}` : "Waiting for Detective..."}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex-1 overflow-y-auto ios-card divide-y divide-white/5">
         <div className="px-4 pt-3 pb-1 text-sm uppercase tracking-wide text-white/40">
           Everyone's roles — keep this phone hidden
@@ -63,7 +86,7 @@ export default function GodScreen({ room }: { room: RoomView }) {
               key={p.id}
               player={p}
               showRole
-              onClick={() => setSelected(p)}
+              onClick={p.host ? undefined : () => setSelected(p)}
               trailing={
                 badges.length > 0 ? (
                   <div className="flex gap-1 text-sm bg-white/10 px-2 py-0.5 rounded-lg">

@@ -42,6 +42,8 @@ export interface RoomView {
   doctorTargetId?: string | null;
   detectiveTargetId?: string | null;
   bodyguardTargetId?: string | null;
+  mafiaTargeted: boolean;
+  doctorEnabled: boolean;
 }
 
 export interface RoleView {

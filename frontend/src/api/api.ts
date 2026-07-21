@@ -104,4 +104,10 @@ export const api = {
 
   leave: (code: string, playerId: string) =>
     req<void>(`/api/rooms/${code}/leave?playerId=${playerId}`, { method: "POST" }),
+
+  submitDetectiveAction: (code: string, playerId: string, targetId: string) =>
+    req<RoleView>(`/api/rooms/${code}/actions/detective`, {
+      method: "POST",
+      body: JSON.stringify({ hostId: playerId, targetId }),
+    }),
 };

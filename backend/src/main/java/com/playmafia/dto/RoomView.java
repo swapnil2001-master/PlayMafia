@@ -18,5 +18,7 @@ public record RoomView(
         String mafiaTargetId,
         String doctorTargetId,
         String detectiveTargetId,
-        String bodyguardTargetId
+        String bodyguardTargetId,
+        boolean mafiaTargeted,
+        boolean doctorEnabled
 ) {}

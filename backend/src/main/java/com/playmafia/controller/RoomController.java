@@ -114,4 +114,9 @@ public class RoomController {
     public void leave(@PathVariable String code, @RequestParam String playerId) {
         engine.leaveRoom(code.toUpperCase(), playerId);
     }
+
+    @PostMapping("/{code}/actions/detective")
+    public RoleView submitDetectiveAction(@PathVariable String code, @RequestBody ActionRequest req) {
+        return engine.submitDetectiveAction(code.toUpperCase(), req.hostId(), req.targetId());
+    }
 }

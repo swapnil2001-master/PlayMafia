@@ -50,7 +50,7 @@ public class Room {
     public List<Player> alivePlayers() {
         List<Player> alive = new ArrayList<>();
         for (Player p : players) {
-            if (p.isAlive()) alive.add(p);
+            if (p.isAlive() && !p.isHost()) alive.add(p);
         }
         return alive;
     }

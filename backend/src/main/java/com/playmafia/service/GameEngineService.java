@@ -98,14 +98,15 @@ public class GameEngineService {
 
     public void startGame(String code, String hostId) {
         Room room = requireHost(code, hostId);
-        int playerCount = room.getPlayers().size();
+        List<Player> activePlayers = room.getPlayers().stream().filter(p -> !p.isHost()).toList();
+        int activePlayerCount = activePlayers.size();
         GameConfig cfg = room.getConfig();
 
-        if (playerCount < 3) {
-            throw badRequest("Need at least 3 players to start");
+        if (activePlayerCount < 2) {
+            throw badRequest("Need at least 2 active players to start");
         }
-        if (cfg.specialCount() > playerCount) {
-            throw badRequest("Special roles exceed player count");
+        if (cfg.specialCount() > activePlayerCount) {
+            throw badRequest("Special roles exceed active player count");
         }
         if (cfg.getMafia() < 1) {
             throw badRequest("Need at least 1 Mafia");
@@ -117,26 +118,34 @@ public class GameEngineService {
         addN(deck, Role.DETECTIVE, cfg.getDetective());
         addN(deck, Role.BODYGUARD, cfg.getBodyguard());
         addN(deck, Role.JESTER, cfg.getJester());
-        while (deck.size() < playerCount) {
+        while (deck.size() < activePlayerCount) {
             deck.add(Role.VILLAGER);
         }
         Collections.shuffle(deck, RANDOM);
 
-        List<Player> players = room.getPlayers();
-        for (int i = 0; i < players.size(); i++) {
-            Player p = players.get(i);
+        for (int i = 0; i < activePlayers.size(); i++) {
+            Player p = activePlayers.get(i);
             p.setRole(deck.get(i));
             p.setAlive(true);
             p.setReady(false);
+        }
+
+        // Set host (God) role to null and keep them alive but not active
+        Player hostPlayer = room.findPlayer(hostId);
+        if (hostPlayer != null) {
+            hostPlayer.setRole(null);
+            hostPlayer.setAlive(true);
+            hostPlayer.setReady(true);
         }
 
         room.setPhase(Phase.ROLE_REVEAL);
         room.setRound(0);
         room.setWinner(null);
         room.getLog().clear();
+        resetNightTargets(room);
 
-        // Deliver each secret role privately, then broadcast the (role-less) public state.
-        for (Player p : players) {
+        // Deliver each secret role privately to active players, then broadcast.
+        for (Player p : activePlayers) {
             sendRole(code, p);
         }
         broadcast(room);
@@ -237,16 +246,6 @@ public class GameEngineService {
             throw badRequest("Target player is already dead.");
         }
         room.setMafiaTargetId(targetId);
-
-        // If only mafia is there (no other active night roles are alive)
-        if (!hasActiveNightRoles(room)) {
-            // Mafia kills and then day happens
-            target.setAlive(false);
-            room.getLog().add(target.getName() + " died at night.");
-            room.setPhase(Phase.DAY);
-            room.getLog().add("Day " + room.getRound() + " begins. Discuss.");
-            resetNightTargets(room);
-        }
         broadcast(room);
     }
 
@@ -363,7 +362,9 @@ public class GameEngineService {
                 includeRoles ? room.getMafiaTargetId() : null,
                 includeRoles ? room.getDoctorTargetId() : null,
                 includeRoles ? room.getDetectiveTargetId() : null,
-                includeRoles ? room.getBodyguardTargetId() : null
+                includeRoles ? room.getBodyguardTargetId() : null,
+                room.getMafiaTargetId() != null,
+                room.getMafiaTargetId() != null || !isRoleAlive(room, Role.MAFIA)
         );
     }
 
@@ -393,6 +394,7 @@ public class GameEngineService {
     private Player requireTarget(Room room, String targetId) {
         Player target = room.findPlayer(targetId);
         if (target == null) throw badRequest("Target player not found");
+        if (target.isHost()) throw badRequest("Cannot target the host (God).");
         return target;
     }
 
@@ -406,6 +408,23 @@ public class GameEngineService {
             code = sb.toString();
         } while (rooms.containsKey(code));
         return code;
+    }
+
+    public RoleView submitDetectiveAction(String code, String playerId, String targetId) {
+        Room room = require(code);
+        if (room.getPhase() != Phase.NIGHT) {
+            throw badRequest("Can only perform night actions during the night.");
+        }
+        Player player = room.findPlayer(playerId);
+        if (player == null || !player.isAlive() || player.getRole() != Role.DETECTIVE) {
+            throw badRequest("Only an alive Detective can perform this action.");
+        }
+        Player target = requireTarget(room, targetId);
+        room.setDetectiveTargetId(targetId);
+        broadcast(room);
+
+        Role r = target.getRole();
+        return new RoleView(r.name(), r.getLabel(), r.getDescription(), r.getTeam());
     }
 
     private static String blankTo(String value, String fallback) {
