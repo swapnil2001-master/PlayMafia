@@ -28,6 +28,11 @@ export default function GodScreen({ room }: { room: RoomView }) {
   const host = playerId!;
   const act = (fn: () => Promise<void>) => fn().catch(() => {}).finally(() => setSelected(null));
 
+  const isMafiaAlive = room.players.some((p) => p.alive && p.role === "Mafia");
+  const isDoctorAlive = room.players.some((p) => p.alive && p.role === "Doctor");
+  const isDetectiveAlive = room.players.some((p) => p.alive && p.role === "Detective");
+  const isBodyguardAlive = room.players.some((p) => p.alive && p.role === "Bodyguard");
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex items-center justify-between">
@@ -46,9 +51,29 @@ export default function GodScreen({ room }: { room: RoomView }) {
         <div className="px-4 pt-3 pb-1 text-sm uppercase tracking-wide text-white/40">
           Everyone's roles — keep this phone hidden
         </div>
-        {room.players.map((p) => (
-          <PlayerRow key={p.id} player={p} showRole onClick={() => setSelected(p)} />
-        ))}
+        {room.players.map((p) => {
+          const badges = [];
+          if (room.mafiaTargetId === p.id) badges.push("🔪");
+          if (room.doctorTargetId === p.id) badges.push("🩺");
+          if (room.detectiveTargetId === p.id) badges.push("🔍");
+          if (room.bodyguardTargetId === p.id) badges.push("🛡️");
+
+          return (
+            <PlayerRow
+              key={p.id}
+              player={p}
+              showRole
+              onClick={() => setSelected(p)}
+              trailing={
+                badges.length > 0 ? (
+                  <div className="flex gap-1 text-sm bg-white/10 px-2 py-0.5 rounded-lg">
+                    {badges.join(" ")}
+                  </div>
+                ) : undefined
+              }
+            />
+          );
+        })}
       </div>
 
       <div className="flex flex-col gap-3 pt-4">
@@ -66,18 +91,62 @@ export default function GodScreen({ room }: { room: RoomView }) {
           <ActionSheet title={selected.name} onClose={() => setSelected(null)}>
             {selected.alive ? (
               <>
-                <SheetButton
-                  color="text-ios-red"
-                  onClick={() => act(() => api.kill(code!, host, selected.id))}
-                >
-                  🔪 Kill (died at night)
-                </SheetButton>
-                <SheetButton
-                  color="text-ios-orange"
-                  onClick={() => act(() => api.voteOut(code!, host, selected.id))}
-                >
-                  🗳️ Vote out
-                </SheetButton>
+                {/* Night Phase Actions */}
+                {room.phase === "NIGHT" && (
+                  <>
+                    {isMafiaAlive && (
+                      <SheetButton
+                        color="text-ios-red"
+                        onClick={() => act(() => api.setMafiaTarget(code!, host, selected.id))}
+                      >
+                        🔪 Set Mafia Target
+                      </SheetButton>
+                    )}
+                    {isDoctorAlive && (
+                      <SheetButton
+                        color={room.mafiaTargetId ? "text-ios-green" : "text-white/30"}
+                        disabled={!room.mafiaTargetId && isMafiaAlive}
+                        onClick={() => act(() => api.setDoctorTarget(code!, host, selected.id))}
+                      >
+                        🩺 Set Doctor Target {!room.mafiaTargetId && isMafiaAlive && "(Set Mafia target first)"}
+                      </SheetButton>
+                    )}
+                    {isDetectiveAlive && (
+                      <SheetButton
+                        color="text-ios-blue"
+                        onClick={() => act(() => api.setDetectiveTarget(code!, host, selected.id))}
+                      >
+                        🔍 Set Detective Target
+                      </SheetButton>
+                    )}
+                    {isBodyguardAlive && (
+                      <SheetButton
+                        color="text-ios-purple"
+                        onClick={() => act(() => api.setBodyguardTarget(code!, host, selected.id))}
+                      >
+                        🛡️ Set Bodyguard Target
+                      </SheetButton>
+                    )}
+                  </>
+                )}
+
+                {/* Day/Morning Actions (Morning only voting option) */}
+                {room.phase !== "NIGHT" && (
+                  <>
+                    <SheetButton
+                      color="text-ios-orange"
+                      onClick={() => act(() => api.voteOut(code!, host, selected.id))}
+                    >
+                      🗳️ Vote out
+                    </SheetButton>
+                    <SheetButton
+                      color="text-ios-red"
+                      onClick={() => act(() => api.kill(code!, host, selected.id))}
+                    >
+                      🔪 Kill (manual override)
+                    </SheetButton>
+                  </>
+                )}
               </>
             ) : (
               <SheetButton
@@ -157,15 +226,20 @@ function SheetButton({
   children,
   color,
   onClick,
+  disabled,
 }: {
   children: React.ReactNode;
   color: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full px-4 py-4 text-center text-lg font-medium ${color} active:bg-white/5`}
+      disabled={disabled}
+      className={`w-full px-4 py-4 text-center text-lg font-medium ${color} ${
+        disabled ? "opacity-30 cursor-not-allowed" : "active:bg-white/5"
+      }`}
     >
       {children}
     </button>

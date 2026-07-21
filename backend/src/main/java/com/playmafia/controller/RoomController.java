@@ -80,6 +80,26 @@ public class RoomController {
         engine.voteOut(code.toUpperCase(), req.hostId(), req.targetId());
     }
 
+    @PostMapping("/{code}/mafia-target")
+    public void mafiaTarget(@PathVariable String code, @RequestBody ActionRequest req) {
+        engine.setMafiaTarget(code.toUpperCase(), req.hostId(), req.targetId());
+    }
+
+    @PostMapping("/{code}/doctor-target")
+    public void doctorTarget(@PathVariable String code, @RequestBody ActionRequest req) {
+        engine.setDoctorTarget(code.toUpperCase(), req.hostId(), req.targetId());
+    }
+
+    @PostMapping("/{code}/detective-target")
+    public void detectiveTarget(@PathVariable String code, @RequestBody ActionRequest req) {
+        engine.setDetectiveTarget(code.toUpperCase(), req.hostId(), req.targetId());
+    }
+
+    @PostMapping("/{code}/bodyguard-target")
+    public void bodyguardTarget(@PathVariable String code, @RequestBody ActionRequest req) {
+        engine.setBodyguardTarget(code.toUpperCase(), req.hostId(), req.targetId());
+    }
+
     @PostMapping("/{code}/advance")
     public void advance(@PathVariable String code, @RequestParam String hostId) {
         engine.advancePhase(code.toUpperCase(), hostId);

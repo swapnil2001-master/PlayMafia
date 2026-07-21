@@ -70,6 +70,30 @@ export const api = {
       body: JSON.stringify({ hostId, targetId }),
     }),
 
+  setMafiaTarget: (code: string, hostId: string, targetId: string) =>
+    req<void>(`/api/rooms/${code}/mafia-target`, {
+      method: "POST",
+      body: JSON.stringify({ hostId, targetId }),
+    }),
+
+  setDoctorTarget: (code: string, hostId: string, targetId: string) =>
+    req<void>(`/api/rooms/${code}/doctor-target`, {
+      method: "POST",
+      body: JSON.stringify({ hostId, targetId }),
+    }),
+
+  setDetectiveTarget: (code: string, hostId: string, targetId: string) =>
+    req<void>(`/api/rooms/${code}/detective-target`, {
+      method: "POST",
+      body: JSON.stringify({ hostId, targetId }),
+    }),
+
+  setBodyguardTarget: (code: string, hostId: string, targetId: string) =>
+    req<void>(`/api/rooms/${code}/bodyguard-target`, {
+      method: "POST",
+      body: JSON.stringify({ hostId, targetId }),
+    }),
+
   advance: (code: string, hostId: string) =>
     req<void>(`/api/rooms/${code}/advance?hostId=${hostId}`, { method: "POST" }),
 

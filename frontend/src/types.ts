@@ -38,6 +38,10 @@ export interface RoomView {
   config: GameConfig;
   players: PlayerView[];
   log: string[];
+  mafiaTargetId?: string | null;
+  doctorTargetId?: string | null;
+  detectiveTargetId?: string | null;
+  bodyguardTargetId?: string | null;
 }
 
 export interface RoleView {

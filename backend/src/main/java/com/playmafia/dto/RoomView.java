@@ -14,5 +14,9 @@ public record RoomView(
         String winner,
         GameConfig config,
         List<PlayerView> players,
-        List<String> log
+        List<String> log,
+        String mafiaTargetId,
+        String doctorTargetId,
+        String detectiveTargetId,
+        String bodyguardTargetId
 ) {}

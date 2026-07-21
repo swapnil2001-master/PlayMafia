@@ -152,6 +152,7 @@ public class GameEngineService {
         if (allReady && room.getPhase() == Phase.ROLE_REVEAL) {
             room.setRound(1);
             room.setPhase(Phase.NIGHT);
+            resetNightTargets(room);
             room.getLog().add("Night 1 begins.");
         }
         broadcast(room);
@@ -187,17 +188,126 @@ public class GameEngineService {
     public void advancePhase(String code, String hostId) {
         Room room = requireHost(code, hostId);
         switch (room.getPhase()) {
-            case NIGHT -> { room.setPhase(Phase.DAY); room.getLog().add("Day " + room.getRound() + ": discuss."); }
+            case NIGHT -> {
+                if (room.getMafiaTargetId() != null) {
+                    String mafiaTargetId = room.getMafiaTargetId();
+                    Player target = room.findPlayer(mafiaTargetId);
+                    if (target != null) {
+                        boolean saved = false;
+                        if (mafiaTargetId.equals(room.getDoctorTargetId())) {
+                            saved = true;
+                        }
+                        if (mafiaTargetId.equals(room.getBodyguardTargetId())) {
+                            saved = true;
+                        }
+                        if (saved) {
+                            room.getLog().add("An attack was prevented during the night.");
+                        } else {
+                            target.setAlive(false);
+                            room.getLog().add(target.getName() + " died at night.");
+                        }
+                    }
+                } else {
+                    room.getLog().add("No one died at night.");
+                }
+                resetNightTargets(room);
+                room.setPhase(Phase.DAY);
+                room.getLog().add("Day " + room.getRound() + " begins. Discuss.");
+            }
             case DAY -> { room.setPhase(Phase.VOTING); room.getLog().add("Voting has begun."); }
             case VOTING -> room.setPhase(Phase.RESULT);
             case RESULT -> {
                 room.setRound(room.getRound() + 1);
                 room.setPhase(Phase.NIGHT);
+                resetNightTargets(room);
                 room.getLog().add("Night " + room.getRound() + " begins.");
             }
             default -> throw badRequest("Cannot advance from " + room.getPhase());
         }
         broadcast(room);
+    }
+
+    public void setMafiaTarget(String code, String hostId, String targetId) {
+        Room room = requireHost(code, hostId);
+        if (room.getPhase() != Phase.NIGHT) {
+            throw badRequest("Can only set Mafia target during the night.");
+        }
+        Player target = requireTarget(room, targetId);
+        if (!target.isAlive()) {
+            throw badRequest("Target player is already dead.");
+        }
+        room.setMafiaTargetId(targetId);
+
+        // If only mafia is there (no other active night roles are alive)
+        if (!hasActiveNightRoles(room)) {
+            // Mafia kills and then day happens
+            target.setAlive(false);
+            room.getLog().add(target.getName() + " died at night.");
+            room.setPhase(Phase.DAY);
+            room.getLog().add("Day " + room.getRound() + " begins. Discuss.");
+            resetNightTargets(room);
+        }
+        broadcast(room);
+    }
+
+    public void setDoctorTarget(String code, String hostId, String targetId) {
+        Room room = requireHost(code, hostId);
+        if (room.getPhase() != Phase.NIGHT) {
+            throw badRequest("Can only set Doctor target during the night.");
+        }
+        if (room.getMafiaTargetId() == null && isRoleAlive(room, Role.MAFIA)) {
+            throw badRequest("Mafia must choose a kill target before Doctor can protect.");
+        }
+        Player target = requireTarget(room, targetId);
+        if (!target.isAlive()) {
+            throw badRequest("Target player is already dead.");
+        }
+        room.setDoctorTargetId(targetId);
+        broadcast(room);
+    }
+
+    public void setDetectiveTarget(String code, String hostId, String targetId) {
+        Room room = requireHost(code, hostId);
+        if (room.getPhase() != Phase.NIGHT) {
+            throw badRequest("Can only set Detective target during the night.");
+        }
+        Player target = requireTarget(room, targetId);
+        if (!target.isAlive()) {
+            throw badRequest("Target player is already dead.");
+        }
+        room.setDetectiveTargetId(targetId);
+        broadcast(room);
+    }
+
+    public void setBodyguardTarget(String code, String hostId, String targetId) {
+        Room room = requireHost(code, hostId);
+        if (room.getPhase() != Phase.NIGHT) {
+            throw badRequest("Can only set Bodyguard target during the night.");
+        }
+        Player target = requireTarget(room, targetId);
+        if (!target.isAlive()) {
+            throw badRequest("Target player is already dead.");
+        }
+        room.setBodyguardTargetId(targetId);
+        broadcast(room);
+    }
+
+    private boolean isRoleAlive(Room room, Role role) {
+        return room.getPlayers().stream()
+                .anyMatch(p -> p.isAlive() && p.getRole() == role);
+    }
+
+    private boolean hasActiveNightRoles(Room room) {
+        return isRoleAlive(room, Role.DOCTOR) ||
+               isRoleAlive(room, Role.DETECTIVE) ||
+               isRoleAlive(room, Role.BODYGUARD);
+    }
+
+    private void resetNightTargets(Room room) {
+        room.setMafiaTargetId(null);
+        room.setDoctorTargetId(null);
+        room.setDetectiveTargetId(null);
+        room.setBodyguardTargetId(null);
     }
 
     public void endGame(String code, String hostId, String winner) {
@@ -249,7 +359,11 @@ public class GameEngineService {
         return new RoomView(
                 room.getCode(), room.getName(), room.getHostId(),
                 room.getPhase().name(), room.getRound(), room.getWinner(),
-                room.getConfig(), players, new ArrayList<>(room.getLog())
+                room.getConfig(), players, new ArrayList<>(room.getLog()),
+                includeRoles ? room.getMafiaTargetId() : null,
+                includeRoles ? room.getDoctorTargetId() : null,
+                includeRoles ? room.getDetectiveTargetId() : null,
+                includeRoles ? room.getBodyguardTargetId() : null
         );
     }
 
