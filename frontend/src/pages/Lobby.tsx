@@ -9,7 +9,8 @@ export default function Lobby({ room }: { room: RoomView }) {
   const nav = useNavigate();
   const { playerId } = useIdentity();
   const isHost = playerId === room.hostId;
-  const shareUrl = `${window.location.origin}/join/${room.code}`;
+  const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const shareUrl = `${window.location.origin}${baseUrl}/join/${room.code}`;
 
   function copyLink() {
     navigator.clipboard?.writeText(shareUrl).catch(() => {});
