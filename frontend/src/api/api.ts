@@ -1,7 +1,10 @@
 import type { GameConfig, JoinResponse, RoleView, RoomView } from "../types";
 
+const BASE = import.meta.env.VITE_API_BASE ?? "";
+
 async function req<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const fullUrl = url.startsWith("http") ? url : `${BASE}${url}`;
+  const res = await fetch(fullUrl, {
     headers: { "Content-Type": "application/json" },
     ...options,
   });

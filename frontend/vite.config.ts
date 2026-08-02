@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react";
 // Proxy /api and /ws to the Spring Boot backend during development so the
 // frontend can use same-origin relative URLs.
 export default defineConfig({
+  base: "/PlayMafia/",
   plugins: [react()],
   define: {
     global: "window",

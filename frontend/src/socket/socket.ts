@@ -1,6 +1,8 @@
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
+const BASE = import.meta.env.VITE_API_BASE ?? "";
+
 /**
  * Creates a STOMP client over SockJS. Subscriptions are registered on connect
  * so they survive reconnects automatically.
@@ -10,8 +12,8 @@ export function createStompClient(
   onStatus?: (connected: boolean) => void
 ): Client {
   const client = new Client({
-    // SockJS handles the transport; the proxy forwards /ws to the backend.
-    webSocketFactory: () => new SockJS("/ws") as unknown as WebSocket,
+    // SockJS handles the transport; uses BASE URL if configured for production.
+    webSocketFactory: () => new SockJS(`${BASE}/ws`) as unknown as WebSocket,
     reconnectDelay: 2000,
     onConnect: () => {
       onStatus?.(true);
