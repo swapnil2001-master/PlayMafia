@@ -17,8 +17,8 @@ public record RoomView(
         List<String> log,
         String mafiaTargetId,
         String doctorTargetId,
-        String detectiveTargetId,
         String bodyguardTargetId,
         boolean mafiaTargeted,
-        boolean doctorEnabled
+        boolean doctorEnabled,
+        String nightStage
 ) {}

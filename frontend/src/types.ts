@@ -40,10 +40,10 @@ export interface RoomView {
   log: string[];
   mafiaTargetId?: string | null;
   doctorTargetId?: string | null;
-  detectiveTargetId?: string | null;
   bodyguardTargetId?: string | null;
   mafiaTargeted: boolean;
   doctorEnabled: boolean;
+  nightStage: "MAFIA" | "DOCTOR" | "DONE";
 }
 
 export interface RoleView {

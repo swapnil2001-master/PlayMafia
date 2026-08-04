@@ -4,6 +4,7 @@ import com.playmafia.dto.PlayerView;
 import com.playmafia.dto.RoleView;
 import com.playmafia.dto.RoomView;
 import com.playmafia.model.GameConfig;
+import com.playmafia.model.NightStage;
 import com.playmafia.model.Phase;
 import com.playmafia.model.Player;
 import com.playmafia.model.Role;
@@ -198,6 +199,9 @@ public class GameEngineService {
         Room room = requireHost(code, hostId);
         switch (room.getPhase()) {
             case NIGHT -> {
+                if (room.getNightStage() != NightStage.DONE) {
+                    throw badRequest("Finish the Mafia and Doctor turns before starting the day.");
+                }
                 if (room.getMafiaTargetId() != null) {
                     String mafiaTargetId = room.getMafiaTargetId();
                     Player target = room.findPlayer(mafiaTargetId);
@@ -241,11 +245,15 @@ public class GameEngineService {
         if (room.getPhase() != Phase.NIGHT) {
             throw badRequest("Can only set Mafia target during the night.");
         }
+        if (room.getNightStage() != NightStage.MAFIA) {
+            throw badRequest("It's not the Mafia turn.");
+        }
         Player target = requireTarget(room, targetId);
         if (!target.isAlive()) {
             throw badRequest("Target player is already dead.");
         }
         room.setMafiaTargetId(targetId);
+        room.setNightStage(stageAfterMafia(room));
         broadcast(room);
     }
 
@@ -254,28 +262,40 @@ public class GameEngineService {
         if (room.getPhase() != Phase.NIGHT) {
             throw badRequest("Can only set Doctor target during the night.");
         }
-        if (room.getMafiaTargetId() == null && isRoleAlive(room, Role.MAFIA)) {
-            throw badRequest("Mafia must choose a kill target before Doctor can protect.");
+        if (room.getNightStage() != NightStage.DOCTOR) {
+            throw badRequest("It's not the Doctor turn.");
         }
         Player target = requireTarget(room, targetId);
         if (!target.isAlive()) {
             throw badRequest("Target player is already dead.");
         }
         room.setDoctorTargetId(targetId);
+        room.setNightStage(NightStage.DONE);
         broadcast(room);
     }
 
-    public void setDetectiveTarget(String code, String hostId, String targetId) {
+    /** Host skips the current night turn (e.g. Mafia chooses no kill) without picking a target. */
+    public void skipNightStage(String code, String hostId) {
         Room room = requireHost(code, hostId);
         if (room.getPhase() != Phase.NIGHT) {
-            throw badRequest("Can only set Detective target during the night.");
+            throw badRequest("Can only skip a night turn during the night.");
         }
-        Player target = requireTarget(room, targetId);
-        if (!target.isAlive()) {
-            throw badRequest("Target player is already dead.");
+        switch (room.getNightStage()) {
+            case MAFIA -> room.setNightStage(stageAfterMafia(room));
+            case DOCTOR -> room.setNightStage(NightStage.DONE);
+            case DONE -> throw badRequest("Night actions are already complete.");
         }
-        room.setDetectiveTargetId(targetId);
         broadcast(room);
+    }
+
+    private NightStage initialNightStage(Room room) {
+        if (isRoleAlive(room, Role.MAFIA)) return NightStage.MAFIA;
+        if (isRoleAlive(room, Role.DOCTOR)) return NightStage.DOCTOR;
+        return NightStage.DONE;
+    }
+
+    private NightStage stageAfterMafia(Room room) {
+        return isRoleAlive(room, Role.DOCTOR) ? NightStage.DOCTOR : NightStage.DONE;
     }
 
     public void setBodyguardTarget(String code, String hostId, String targetId) {
@@ -296,17 +316,11 @@ public class GameEngineService {
                 .anyMatch(p -> p.isAlive() && p.getRole() == role);
     }
 
-    private boolean hasActiveNightRoles(Room room) {
-        return isRoleAlive(room, Role.DOCTOR) ||
-               isRoleAlive(room, Role.DETECTIVE) ||
-               isRoleAlive(room, Role.BODYGUARD);
-    }
-
     private void resetNightTargets(Room room) {
         room.setMafiaTargetId(null);
         room.setDoctorTargetId(null);
-        room.setDetectiveTargetId(null);
         room.setBodyguardTargetId(null);
+        room.setNightStage(initialNightStage(room));
     }
 
     public void endGame(String code, String hostId, String winner) {
@@ -361,10 +375,10 @@ public class GameEngineService {
                 room.getConfig(), players, new ArrayList<>(room.getLog()),
                 includeRoles ? room.getMafiaTargetId() : null,
                 includeRoles ? room.getDoctorTargetId() : null,
-                includeRoles ? room.getDetectiveTargetId() : null,
                 includeRoles ? room.getBodyguardTargetId() : null,
                 room.getMafiaTargetId() != null,
-                room.getMafiaTargetId() != null || !isRoleAlive(room, Role.MAFIA)
+                room.getMafiaTargetId() != null || !isRoleAlive(room, Role.MAFIA),
+                room.getNightStage().name()
         );
     }
 
@@ -408,23 +422,6 @@ public class GameEngineService {
             code = sb.toString();
         } while (rooms.containsKey(code));
         return code;
-    }
-
-    public RoleView submitDetectiveAction(String code, String playerId, String targetId) {
-        Room room = require(code);
-        if (room.getPhase() != Phase.NIGHT) {
-            throw badRequest("Can only perform night actions during the night.");
-        }
-        Player player = room.findPlayer(playerId);
-        if (player == null || !player.isAlive() || player.getRole() != Role.DETECTIVE) {
-            throw badRequest("Only an alive Detective can perform this action.");
-        }
-        Player target = requireTarget(room, targetId);
-        room.setDetectiveTargetId(targetId);
-        broadcast(room);
-
-        Role r = target.getRole();
-        return new RoleView(r.name(), r.getLabel(), r.getDescription(), r.getTeam());
     }
 
     private static String blankTo(String value, String fallback) {

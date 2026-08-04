@@ -90,11 +90,6 @@ public class RoomController {
         engine.setDoctorTarget(code.toUpperCase(), req.hostId(), req.targetId());
     }
 
-    @PostMapping("/{code}/detective-target")
-    public void detectiveTarget(@PathVariable String code, @RequestBody ActionRequest req) {
-        engine.setDetectiveTarget(code.toUpperCase(), req.hostId(), req.targetId());
-    }
-
     @PostMapping("/{code}/bodyguard-target")
     public void bodyguardTarget(@PathVariable String code, @RequestBody ActionRequest req) {
         engine.setBodyguardTarget(code.toUpperCase(), req.hostId(), req.targetId());
@@ -115,8 +110,8 @@ public class RoomController {
         engine.leaveRoom(code.toUpperCase(), playerId);
     }
 
-    @PostMapping("/{code}/actions/detective")
-    public RoleView submitDetectiveAction(@PathVariable String code, @RequestBody ActionRequest req) {
-        return engine.submitDetectiveAction(code.toUpperCase(), req.hostId(), req.targetId());
+    @PostMapping("/{code}/night/skip-stage")
+    public void skipNightStage(@PathVariable String code, @RequestParam String hostId) {
+        engine.skipNightStage(code.toUpperCase(), hostId);
     }
 }

@@ -85,17 +85,14 @@ export const api = {
       body: JSON.stringify({ hostId, targetId }),
     }),
 
-  setDetectiveTarget: (code: string, hostId: string, targetId: string) =>
-    req<void>(`/api/rooms/${code}/detective-target`, {
-      method: "POST",
-      body: JSON.stringify({ hostId, targetId }),
-    }),
-
   setBodyguardTarget: (code: string, hostId: string, targetId: string) =>
     req<void>(`/api/rooms/${code}/bodyguard-target`, {
       method: "POST",
       body: JSON.stringify({ hostId, targetId }),
     }),
+
+  skipNightStage: (code: string, hostId: string) =>
+    req<void>(`/api/rooms/${code}/night/skip-stage?hostId=${hostId}`, { method: "POST" }),
 
   advance: (code: string, hostId: string) =>
     req<void>(`/api/rooms/${code}/advance?hostId=${hostId}`, { method: "POST" }),
@@ -107,10 +104,4 @@ export const api = {
 
   leave: (code: string, playerId: string) =>
     req<void>(`/api/rooms/${code}/leave?playerId=${playerId}`, { method: "POST" }),
-
-  submitDetectiveAction: (code: string, playerId: string, targetId: string) =>
-    req<RoleView>(`/api/rooms/${code}/actions/detective`, {
-      method: "POST",
-      body: JSON.stringify({ hostId: playerId, targetId }),
-    }),
 };

@@ -30,8 +30,13 @@ export default function GodScreen({ room }: { room: RoomView }) {
 
   const isMafiaAlive = room.players.some((p) => p.alive && p.role === "Mafia");
   const isDoctorAlive = room.players.some((p) => p.alive && p.role === "Doctor");
-  const isDetectiveAlive = room.players.some((p) => p.alive && p.role === "Detective");
   const isBodyguardAlive = room.players.some((p) => p.alive && p.role === "Bodyguard");
+
+  const nightStageLabel: Record<string, string> = {
+    MAFIA: "🔪 Mafia's turn",
+    DOCTOR: "🩺 Doctor's turn",
+    DONE: "✅ Night actions complete",
+  };
 
   return (
     <div className="flex flex-1 flex-col">
@@ -52,21 +57,26 @@ export default function GodScreen({ room }: { room: RoomView }) {
           <div className="flex items-center justify-between">
             <span className="text-white/60">🔪 Mafia action:</span>
             <span className={room.players.find(p => p.id === room.mafiaTargetId)?.name ? "font-semibold text-ios-red" : "text-white/30"}>
-              {room.players.find(p => p.id === room.mafiaTargetId)?.name ? `Killed ${room.players.find(p => p.id === room.mafiaTargetId)?.name}` : "Waiting for Mafia..."}
+              {room.players.find(p => p.id === room.mafiaTargetId)?.name ? `Killed ${room.players.find(p => p.id === room.mafiaTargetId)?.name}` : "No kill chosen"}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-white/60">🩺 Doctor action:</span>
             <span className={room.players.find(p => p.id === room.doctorTargetId)?.name ? "font-semibold text-ios-green" : "text-white/30"}>
-              {room.players.find(p => p.id === room.doctorTargetId)?.name ? `Saved ${room.players.find(p => p.id === room.doctorTargetId)?.name}` : "Waiting for Doctor..."}
+              {room.players.find(p => p.id === room.doctorTargetId)?.name ? `Saved ${room.players.find(p => p.id === room.doctorTargetId)?.name}` : "No save chosen"}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-white/60">🔍 Detective action:</span>
-            <span className={room.players.find(p => p.id === room.detectiveTargetId)?.name ? "font-semibold text-ios-blue" : "text-white/30"}>
-              {room.players.find(p => p.id === room.detectiveTargetId)?.name ? `Suspected ${room.players.find(p => p.id === room.detectiveTargetId)?.name}` : "Waiting for Detective..."}
-            </span>
-          </div>
+          {room.nightStage !== "DONE" && (
+            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+              <span className="text-ios-orange font-semibold">{nightStageLabel[room.nightStage]}</span>
+              <button
+                onClick={() => act(() => api.skipNightStage(code!, host))}
+                className="text-sm text-white/40 underline underline-offset-2 active:text-white/60"
+              >
+                Skip turn
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -78,7 +88,6 @@ export default function GodScreen({ room }: { room: RoomView }) {
           const badges = [];
           if (room.mafiaTargetId === p.id) badges.push("🔪");
           if (room.doctorTargetId === p.id) badges.push("🩺");
-          if (room.detectiveTargetId === p.id) badges.push("🔍");
           if (room.bodyguardTargetId === p.id) badges.push("🛡️");
 
           return (
@@ -100,7 +109,10 @@ export default function GodScreen({ room }: { room: RoomView }) {
       </div>
 
       <div className="flex flex-col gap-3 pt-4">
-        <Button onClick={() => act(() => api.advance(code!, host))}>
+        <Button
+          onClick={() => act(() => api.advance(code!, host))}
+          disabled={room.phase === "NIGHT" && room.nightStage !== "DONE"}
+        >
           {advanceLabel[room.phase] ?? "Next"}
         </Button>
         <Button variant="secondary" onClick={() => setShowEnd(true)}>
@@ -114,32 +126,23 @@ export default function GodScreen({ room }: { room: RoomView }) {
           <ActionSheet title={selected.name} onClose={() => setSelected(null)}>
             {selected.alive ? (
               <>
-                {/* Night Phase Actions */}
+                {/* Night Phase Actions — one turn at a time */}
                 {room.phase === "NIGHT" && (
                   <>
-                    {isMafiaAlive && (
+                    {room.nightStage === "MAFIA" && isMafiaAlive && (
                       <SheetButton
                         color="text-ios-red"
                         onClick={() => act(() => api.setMafiaTarget(code!, host, selected.id))}
                       >
-                        🔪 Set Mafia Target
+                        🔪 Mafia kills this player
                       </SheetButton>
                     )}
-                    {isDoctorAlive && (
+                    {room.nightStage === "DOCTOR" && isDoctorAlive && (
                       <SheetButton
-                        color={room.mafiaTargetId ? "text-ios-green" : "text-white/30"}
-                        disabled={!room.mafiaTargetId && isMafiaAlive}
+                        color="text-ios-green"
                         onClick={() => act(() => api.setDoctorTarget(code!, host, selected.id))}
                       >
-                        🩺 Set Doctor Target {!room.mafiaTargetId && isMafiaAlive && "(Set Mafia target first)"}
-                      </SheetButton>
-                    )}
-                    {isDetectiveAlive && (
-                      <SheetButton
-                        color="text-ios-blue"
-                        onClick={() => act(() => api.setDetectiveTarget(code!, host, selected.id))}
-                      >
-                        🔍 Set Detective Target
+                        🩺 Doctor saves this player
                       </SheetButton>
                     )}
                     {isBodyguardAlive && (

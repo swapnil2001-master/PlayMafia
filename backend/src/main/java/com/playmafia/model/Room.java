@@ -17,8 +17,8 @@ public class Room {
 
     private String mafiaTargetId;
     private String doctorTargetId;
-    private String detectiveTargetId;
     private String bodyguardTargetId;
+    private NightStage nightStage = NightStage.MAFIA;
 
     public Room() {}
 
@@ -28,11 +28,11 @@ public class Room {
     public String getDoctorTargetId() { return doctorTargetId; }
     public void setDoctorTargetId(String id) { this.doctorTargetId = id; }
 
-    public String getDetectiveTargetId() { return detectiveTargetId; }
-    public void setDetectiveTargetId(String id) { this.detectiveTargetId = id; }
-
     public String getBodyguardTargetId() { return bodyguardTargetId; }
     public void setBodyguardTargetId(String id) { this.bodyguardTargetId = id; }
+
+    public NightStage getNightStage() { return nightStage; }
+    public void setNightStage(NightStage nightStage) { this.nightStage = nightStage; }
 
     public Room(String code, String name, String hostId) {
         this.code = code;
